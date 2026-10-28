@@ -3,13 +3,6 @@ import { UploadedPDF, ChatMessage, ExamState, Flashcard, AppSettings } from '@/t
 const DB_NAME = 'EstudioConPDFs_DB';
 const DB_VERSION = 1;
 
-interface DBSchema {
-  documents: UploadedPDF;
-  chats: ChatMessage;
-  exams: ExamState;
-  flashcards: Flashcard;
-}
-
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') {
@@ -193,7 +186,7 @@ export async function saveExam(exam: ExamState): Promise<void> {
 // Settings in localStorage
 export function getAppSettings(): AppSettings {
   if (typeof window === 'undefined') {
-    return { geminiApiKey: '', model: 'gemini-2.5-flash' };
+    return { geminiApiKey: '', model: 'gemini-3.8-flash' };
   }
   try {
     const raw = localStorage.getItem('estudio_pdf_settings');
@@ -203,14 +196,15 @@ export function getAppSettings(): AppSettings {
       if (
         !parsed.model ||
         parsed.model.includes('1.5') ||
-        parsed.model.includes('2.0')
+        parsed.model.includes('2.0') ||
+        parsed.model.includes('2.5')
       ) {
-        parsed.model = 'gemini-2.5-flash';
+        parsed.model = 'gemini-3.8-flash';
       }
       return parsed;
     }
   } catch {}
-  return { geminiApiKey: '', model: 'gemini-2.5-flash' };
+  return { geminiApiKey: '', model: 'gemini-3.8-flash' };
 }
 
 export function saveAppSettings(settings: AppSettings): void {

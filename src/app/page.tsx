@@ -25,7 +25,7 @@ export default function Home() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [settings, setSettings] = useState<AppSettings>({
     geminiApiKey: '',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.8-flash',
   });
   
   const [activeTab, setActiveTab] = useState<'documents' | 'chat' | 'exam' | 'flashcards'>('documents');

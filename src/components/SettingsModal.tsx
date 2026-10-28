@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Key, Cpu, Trash2, Check, ExternalLink, ShieldCheck } from 'lucide-react';
+import { X, Key, Trash2, Check, ExternalLink, ShieldCheck } from 'lucide-react';
 import { AppSettings } from '@/types';
 
 interface SettingsModalProps {
@@ -20,7 +20,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onResetAllData,
 }) => {
   const [apiKey, setApiKey] = useState(settings.geminiApiKey || '');
-  const [model, setModel] = useState(settings.model || 'gemini-2.5-flash');
+  const [model, setModel] = useState(settings.model || 'gemini-3.8-flash');
   const [isSaved, setIsSaved] = useState(false);
 
   if (!isOpen) return null;
@@ -108,9 +108,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onChange={(e) => setModel(e.target.value)}
                 className="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 text-slate-800"
               >
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recomendado - Rápido y Estable)</option>
-                <option value="gemini-3.5-flash">Gemini 3.5 Flash (Alta Inteligencia)</option>
-                <option value="gemini-3.8-flash">Gemini 3.8 Flash (Rendimiento Avanzado)</option>
+                <option value="gemini-3.8-flash">Gemini 3.8 Flash (Recomendado oficial - Alta velocidad)</option>
+                <option value="gemini-3.5-flash">Gemini 3.5 Flash (Equilibrado)</option>
                 <option value="gemini-3.1-pro">Gemini 3.1 Pro (Razonamiento Complejo)</option>
               </select>
             </div>

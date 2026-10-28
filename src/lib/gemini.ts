@@ -1,12 +1,14 @@
 import { GoogleGenAI } from '@google/genai';
 
-// Mapa de sustitución para versiones deprecadas / en desuso
+// Mapa de sustitución para versiones no disponibles o retiradas
 const DEPRECATED_MODELS: Record<string, string> = {
+  'gemini-2.5-flash': 'gemini-3.8-flash',
+  'gemini-2.5-pro': 'gemini-3.8-flash',
   'gemini-2.0-flash': 'gemini-3.8-flash',
   'gemini-2.0-flash-lite': 'gemini-3.8-flash',
   'gemini-2.0-flash-001': 'gemini-3.8-flash',
   'gemini-1.5-flash': 'gemini-3.8-flash',
-  'gemini-1.5-pro': 'gemini-3.8-pro',
+  'gemini-1.5-pro': 'gemini-3.8-flash',
 };
 
 export function getGeminiClient(apiKey?: string) {
@@ -28,7 +30,7 @@ export function normalizeModelName(name?: string): string {
     return DEPRECATED_MODELS[clean];
   }
 
-  if (clean.includes('1.5') || clean.includes('2.0')) {
+  if (clean.includes('1.5') || clean.includes('2.0') || clean.includes('2.5')) {
     return 'gemini-3.8-flash';
   }
   
