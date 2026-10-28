@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGeminiClient, generateContentWithFallback } from '@/lib/gemini';
+import { getGeminiClient, generateContentWithFallback, formatFriendlyErrorMessage } from '@/lib/gemini';
 
 export async function POST(req: NextRequest) {
   try {
@@ -70,14 +70,7 @@ ${context ? `A continuación tienes texto de referencia de los documentos:\n====
     return NextResponse.json({ text });
   } catch (error: any) {
     console.error('Error en /api/chat:', error);
-    const isApiKeyError = error?.message?.includes('MISSING_API_KEY') || error?.message?.includes('API_KEY_INVALID');
-    return NextResponse.json(
-      {
-        error: isApiKeyError
-          ? 'Clave de API no configurada o inválida. Por favor, revisa tus ajustes.'
-          : error.message || 'Error al generar la respuesta',
-      },
-      { status: isApiKeyError ? 401 : 500 }
-    );
+    const { message, statusCode } = formatFriendlyErrorMessage(error);
+    return NextResponse.json({ error: message }, { status: statusCode });
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGeminiClient, generateContentWithFallback } from '@/lib/gemini';
+import { getGeminiClient, generateContentWithFallback, formatFriendlyErrorMessage } from '@/lib/gemini';
 import { Flashcard } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -69,14 +69,7 @@ ${context ? `TEXTO DE LOS DOCUMENTOS:\n=========================================
     return NextResponse.json({ flashcards });
   } catch (error: any) {
     console.error('Error en /api/flashcards:', error);
-    const isApiKeyError = error?.message?.includes('MISSING_API_KEY') || error?.message?.includes('API_KEY_INVALID');
-    return NextResponse.json(
-      {
-        error: isApiKeyError
-          ? 'Clave de API no configurada o inválida. Por favor, revisa tus ajustes.'
-          : error.message || 'Error al generar tarjetas de estudio',
-      },
-      { status: isApiKeyError ? 401 : 500 }
-    );
+    const { message, statusCode } = formatFriendlyErrorMessage(error);
+    return NextResponse.json({ error: message }, { status: statusCode });
   }
 }
