@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGeminiClient, normalizeModelName } from '@/lib/gemini';
+import { getGeminiClient, generateContentWithFallback } from '@/lib/gemini';
 import { ExamConfig, ExamQuestion } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -14,7 +14,6 @@ export async function POST(req: NextRequest) {
     }
 
     const ai = getGeminiClient(apiKey);
-    const activeModel = normalizeModelName(model);
 
     const questionTypeDescription = {
       test: 'Preguntas de opción múltiple (tipo test) con exactamente 4 opciones ("A) ...", "B) ...", "C) ...", "D) ...") y una única opción correcta.',
@@ -54,8 +53,7 @@ ${context}
 =========================================
 `;
 
-    const response = await ai.models.generateContent({
-      model: activeModel,
+    const response = await generateContentWithFallback(ai, model || 'gemini-3.8-flash', {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
         responseMimeType: 'application/json',

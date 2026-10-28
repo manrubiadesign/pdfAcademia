@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGeminiClient, normalizeModelName } from '@/lib/gemini';
+import { getGeminiClient, generateContentWithFallback } from '@/lib/gemini';
 import { Flashcard } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -15,7 +15,6 @@ export async function POST(req: NextRequest) {
 
     const targetCount = [8, 12, 20].includes(Number(count)) ? Number(count) : 12;
     const ai = getGeminiClient(apiKey);
-    const activeModel = normalizeModelName(model);
 
     const prompt = `
 Eres un pedagogo experto en técnicas de estudio activo y repetición espaciada.
@@ -45,8 +44,7 @@ ${context}
 =========================================
 `;
 
-    const response = await ai.models.generateContent({
-      model: activeModel,
+    const response = await generateContentWithFallback(ai, model || 'gemini-3.8-flash', {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
         responseMimeType: 'application/json',

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGeminiClient, normalizeModelName } from '@/lib/gemini';
+import { getGeminiClient, generateContentWithFallback } from '@/lib/gemini';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,7 +13,6 @@ export async function POST(req: NextRequest) {
     }
 
     const ai = getGeminiClient(apiKey);
-    const activeModel = normalizeModelName(model);
 
     const systemInstruction = `
 Eres un tutor académico riguroso y asistente de estudio basado EXCLUSIVAMENTE en el contenido de los documentos PDF subidos por el alumno.
@@ -49,8 +48,7 @@ ${context}
       parts: [{ text: lastUserMessage }],
     });
 
-    const response = await ai.models.generateContent({
-      model: activeModel,
+    const response = await generateContentWithFallback(ai, model, {
       contents,
       config: {
         systemInstruction,

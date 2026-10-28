@@ -36,3 +36,58 @@ export function normalizeModelName(name?: string): string {
   
   return clean;
 }
+
+/**
+ * Ejecuta generateContent con fallback automático ante errores 503 (alta demanda) o 429.
+ * Si el modelo principal está saturado temporalmente en Google, prueba alternativas estables.
+ */
+export async function generateContentWithFallback(
+  ai: GoogleGenAI,
+  preferredModel: string,
+  params: {
+    contents: any;
+    config?: any;
+  }
+) {
+  const initial = normalizeModelName(preferredModel);
+  // Lista de modelos alternativos en caso de sobrecarga
+  const candidateModels = Array.from(
+    new Set([initial, 'gemini-3.5-flash', 'gemini-3.7-flash', 'gemini-flash-latest'])
+  );
+
+  let lastError: any = null;
+
+  for (let i = 0; i < candidateModels.length; i++) {
+    const currentModel = candidateModels[i];
+    try {
+      const response = await ai.models.generateContent({
+        model: currentModel,
+        contents: params.contents,
+        config: params.config,
+      });
+      return response;
+    } catch (err: any) {
+      lastError = err;
+      const errMsg = err?.message || '';
+      const isHighDemand =
+        errMsg.includes('503') ||
+        errMsg.includes('high demand') ||
+        errMsg.includes('UNAVAILABLE') ||
+        errMsg.includes('temporarily') ||
+        errMsg.includes('RESOURCE_EXHAUSTED') ||
+        errMsg.includes('429');
+
+      if (isHighDemand && i < candidateModels.length - 1) {
+        console.warn(`[Gemini Fallback] El modelo ${currentModel} tiene alta demanda en Google. Probando con ${candidateModels[i + 1]}...`);
+        // Pequeña pausa antes de reintentar con el siguiente modelo
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        continue;
+      }
+
+      // Si no es un error de saturación temporal, relanzar
+      throw err;
+    }
+  }
+
+  throw lastError;
+}

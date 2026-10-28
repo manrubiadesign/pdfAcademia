@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGeminiClient, normalizeModelName } from '@/lib/gemini';
+import { getGeminiClient, generateContentWithFallback } from '@/lib/gemini';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,7 +13,6 @@ export async function POST(req: NextRequest) {
     }
 
     const ai = getGeminiClient(apiKey);
-    const activeModel = normalizeModelName(model);
 
     const prompt = `
 Eres un evaluador académico imparcial y formativo.
@@ -37,8 +36,7 @@ Devuelve EXCLUSIVAMENTE un JSON válido con esta forma:
 }
 `;
 
-    const response = await ai.models.generateContent({
-      model: activeModel,
+    const response = await generateContentWithFallback(ai, model || 'gemini-3.8-flash', {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
         responseMimeType: 'application/json',
