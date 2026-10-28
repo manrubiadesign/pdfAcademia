@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, AlertTriangle, Trash2, CheckCircle2, RefreshCw, Info, Sparkles } from 'lucide-react';
+import { Upload, FileText, AlertTriangle, Trash2, CheckCircle2, RefreshCw, Info, Sparkles, Cloud } from 'lucide-react';
 import { UploadedPDF } from '@/types';
 import { parsePdfFile, formatFileSize } from '@/lib/pdfParser';
 
 interface DocumentManagerProps {
   documents: UploadedPDF[];
+  apiKey?: string;
   onAddDocument: (doc: UploadedPDF) => void;
   onRemoveDocument: (id: string) => void;
   onClearAll: () => void;
@@ -15,6 +16,7 @@ interface DocumentManagerProps {
 
 export const DocumentManager: React.FC<DocumentManagerProps> = ({
   documents,
+  apiKey,
   onAddDocument,
   onRemoveDocument,
   onClearAll,
@@ -43,12 +45,37 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
           continue;
         }
 
-        setProcessingStatus(`Extrayendo texto página a página de "${file.name}"...`);
+        setProcessingStatus(`Conectando con Gemini Cloud y analizando "${file.name}"...`);
+
+        // Subida opcional a Gemini Cloud Files API para velocidad máxima
+        let fileUri: string | undefined = undefined;
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          if (apiKey) {
+            formData.append('apiKey', apiKey);
+          }
+          const upRes = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          if (upRes.ok) {
+            const upData = await upRes.json();
+            fileUri = upData.fileUri;
+          }
+        } catch (e) {
+          console.warn('Subida cloud falló, usando extracción local como respaldo:', e);
+        }
+
         const parsed = await parsePdfFile(file);
+        if (fileUri) {
+          parsed.fileUri = fileUri;
+          parsed.isCloudHosted = true;
+        }
         onAddDocument(parsed);
       }
     } catch (err: any) {
-      console.error('Error parseando PDF:', err);
+      console.error('Error procesando PDF:', err);
       setErrorMsg(`Error procesando PDF: ${err.message || 'El archivo está dañado o no se puede leer.'}`);
     } finally {
       setIsProcessing(false);
@@ -80,27 +107,26 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
       <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-blue-900 rounded-2xl p-6 text-white shadow-xl">
         <div className="max-w-3xl">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm text-xs font-semibold text-indigo-200 mb-3">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Aprendizaje 100% fiel a tus textos</span>
+            <Cloud className="w-3.5 h-3.5" />
+            <span>Aceleración nativa con Gemini Cloud File API</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             Sube tus apuntes, manuales o libros en PDF
           </h1>
           <p className="mt-2 text-indigo-100 text-sm sm:text-base leading-relaxed">
-            La inteligencia artificial responde <strong>únicamente</strong> con el contenido de los documentos subidos,
-            citando siempre el documento y la página exacta. Si un dato no figura en los textos, lo avisará en lugar de inventarlo.
+            Los PDFs se analizan directamente en la nube de Google con comprensión multimodal completa (texto, diagramas, fórmulas y tablas), respondiendo con citas exactas de página.
           </p>
         </div>
       </div>
 
       {/* Scanned PDFs Warning Banner if any */}
-      {documents.some((d) => d.isScanned) && (
+      {documents.some((d) => d.isScanned && !d.isCloudHosted) && (
         <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start space-x-3 shadow-xs">
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="text-sm">
-            <p className="font-semibold text-amber-900">PDFs escaneados o sin texto seleccionable detectados</p>
+            <p className="font-semibold text-amber-900">PDF escaneado detectado</p>
             <p className="text-amber-700 mt-0.5">
-              Algunos de los documentos subidos apenas contienen texto legible por ordenador. La app necesita que el PDF contenga texto seleccionable (no fotografías de páginas sin OCR previo) para responder preguntas o generar exámenes con precisión.
+              Algunos documentos contienen páginas escaneadas sin texto seleccionable. Gracias a la nube de Gemini se interpretarán visualmente, pero se recomienda texto nítido para citar páginas con mayor precisión.
             </p>
           </div>
         </div>
@@ -154,8 +180,8 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
           </div>
 
           <div className="inline-flex items-center space-x-1.5 text-xs text-slate-400 bg-slate-100 px-3 py-1.5 rounded-full">
-            <Info className="w-3.5 h-3.5" />
-            <span>Extracción de texto 100% privada en el navegador vía pdf.js</span>
+            <Cloud className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Subida y análisis directo en la nube para máxima velocidad</span>
           </div>
         </div>
       </div>
@@ -163,31 +189,6 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
       {/* Documents Status and List */}
       {documents.length > 0 && (
         <div className="space-y-4">
-          {/* Capacity Bar */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-semibold text-slate-700">
-                Capacidad de contexto utilizada: {totalCharacters.toLocaleString()} / {maxRecommendedChars.toLocaleString()} caracteres
-              </span>
-              <span className={`font-bold ${usagePercentage > 90 ? 'text-amber-600' : 'text-slate-500'}`}>
-                {usagePercentage}%
-              </span>
-            </div>
-            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-              <div
-                className={`h-full transition-all duration-500 rounded-full ${
-                  usagePercentage > 90 ? 'bg-amber-500' : 'bg-indigo-600'
-                }`}
-                style={{ width: `${usagePercentage}%` }}
-              />
-            </div>
-            {usagePercentage >= 90 && (
-              <p className="text-xs text-amber-600 mt-2">
-                Recomendación: para bibliotecas masivas se aconseja segmentar o estudiar por bloques temáticos.
-              </p>
-            )}
-          </div>
-
           {/* Document Cards */}
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
@@ -209,7 +210,7 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                 className="bg-white border border-slate-200 rounded-xl p-4 flex items-start justify-between shadow-xs hover:border-indigo-300 transition-colors"
               >
                 <div className="flex items-start space-x-3 overflow-hidden">
-                  <div className={`p-2.5 rounded-lg shrink-0 ${doc.isScanned ? 'bg-amber-100 text-amber-700' : 'bg-indigo-50 text-indigo-600'}`}>
+                  <div className={`p-2.5 rounded-lg shrink-0 ${doc.isCloudHosted ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-700'}`}>
                     <FileText className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
@@ -224,17 +225,19 @@ export const DocumentManager: React.FC<DocumentManagerProps> = ({
                       <span>{doc.totalChars.toLocaleString()} caracteres</span>
                     </div>
 
-                    {doc.isScanned ? (
-                      <span className="inline-flex items-center space-x-1 mt-2 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
-                        <AlertTriangle className="w-3 h-3" />
-                        <span>Sin texto detectable (posible escaneo)</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center space-x-1 mt-2 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {doc.isCloudHosted && (
+                        <span className="inline-flex items-center space-x-1 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                          <Cloud className="w-3 h-3" />
+                          <span>Gemini Cloud Activo</span>
+                        </span>
+                      )}
+
+                      <span className="inline-flex items-center space-x-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
                         <CheckCircle2 className="w-3 h-3" />
-                        <span>Texto extraído y listo</span>
+                        <span>Listo para estudiar</span>
                       </span>
-                    )}
+                    </div>
                   </div>
                 </div>
 

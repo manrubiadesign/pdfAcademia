@@ -3,11 +3,11 @@ import { getGeminiClient, generateContentWithFallback } from '@/lib/gemini';
 
 export async function POST(req: NextRequest) {
   try {
-    const { context, messages, apiKey, model } = await req.json();
+    const { context, files, messages, apiKey, model } = await req.json();
 
-    if (!context || !messages || !Array.isArray(messages) || messages.length === 0) {
+    if ((!context && (!files || files.length === 0)) || !messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
-        { error: 'Contexto o mensajes no proporcionados' },
+        { error: 'Contexto, documentos o mensajes no proporcionados' },
         { status: 400 }
       );
     }
@@ -23,10 +23,7 @@ NORMAS CRÍTICAS E INQUEBRANTABLES:
 3. NO ALUCINAR: Si la respuesta a la pregunta del usuario no está explícitamente en el contenido de los documentos, DEBES responder exactamente o similar a: "Esta información no aparece en los documentos subidos." No intentes responder con conocimientos generales.
 4. MANTÉN UN TONO claro, pedagógico, ordenado y estructurado con viñetas cuando convenga.
 
-A continuación tienes el texto íntegro extraído de los documentos del usuario:
-=========================================
-${context}
-=========================================
+${context ? `A continuación tienes texto de referencia de los documentos:\n=========================================\n${context}\n=========================================` : ''}
 `;
 
     // Format conversation history for GoogleGenAI
@@ -41,18 +38,32 @@ ${context}
       });
     }
 
-    // Add current user prompt
+    // Add current user prompt with attached Cloud Files if available
     const lastUserMessage = messages[messages.length - 1].content;
+    const userParts: any[] = [];
+
+    if (Array.isArray(files) && files.length > 0) {
+      for (const f of files) {
+        if (f.fileUri) {
+          userParts.push({
+            fileData: {
+              fileUri: f.fileUri,
+              mimeType: f.mimeType || 'application/pdf',
+            },
+          });
+        }
+      }
+    }
+
+    userParts.push({ text: `${systemInstruction}\n\nPregunta del alumno: ${lastUserMessage}` });
+
     contents.push({
       role: 'user',
-      parts: [{ text: lastUserMessage }],
+      parts: userParts,
     });
 
     const response = await generateContentWithFallback(ai, model, {
       contents,
-      config: {
-        systemInstruction,
-      },
     });
 
     const text = response.text || '';

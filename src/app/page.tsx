@@ -17,7 +17,6 @@ import {
   getAppSettings, saveAppSettings 
 } from '@/lib/storage';
 import { buildContextSnippet } from '@/lib/pdfParser';
-import { KeyRound, ShieldAlert, Sparkles } from 'lucide-react';
 
 export default function Home() {
   const [documents, setDocuments] = useState<UploadedPDF[]>([]);
@@ -55,6 +54,13 @@ export default function Home() {
     loadData();
   }, []);
 
+  // Helper to extract cloud files from active documents
+  const getCloudFiles = () => {
+    return documents
+      .filter((d) => !!d.fileUri)
+      .map((d) => ({ fileUri: d.fileUri!, mimeType: 'application/pdf' }));
+  };
+
   // Document actions
   const handleAddDocument = async (doc: UploadedPDF) => {
     setDocuments((prev) => [...prev, doc]);
@@ -88,12 +94,14 @@ export default function Home() {
 
     try {
       const { text: contextSnippet } = buildContextSnippet(documents);
+      const cloudFiles = getCloudFiles();
 
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           context: contextSnippet,
+          files: cloudFiles,
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
           apiKey: settings.geminiApiKey || undefined,
           model: settings.model,
@@ -143,12 +151,14 @@ export default function Home() {
   // Exam actions
   const handleGenerateExam = async (config: ExamConfig): Promise<ExamQuestion[]> => {
     const { text: contextSnippet } = buildContextSnippet(documents);
+    const cloudFiles = getCloudFiles();
 
     const res = await fetch('/api/exam', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         context: contextSnippet,
+        files: cloudFiles,
         config,
         apiKey: settings.geminiApiKey || undefined,
         model: settings.model,
@@ -193,12 +203,14 @@ export default function Home() {
   // Flashcards actions
   const handleGenerateFlashcards = async (count: number, topic?: string): Promise<Flashcard[]> => {
     const { text: contextSnippet } = buildContextSnippet(documents);
+    const cloudFiles = getCloudFiles();
 
     const res = await fetch('/api/flashcards', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         context: contextSnippet,
+        files: cloudFiles,
         count,
         topic,
         apiKey: settings.geminiApiKey || undefined,
@@ -260,6 +272,7 @@ export default function Home() {
         {activeTab === 'documents' && (
           <DocumentManager
             documents={documents}
+            apiKey={settings.geminiApiKey}
             onAddDocument={handleAddDocument}
             onRemoveDocument={handleRemoveDocument}
             onClearAll={handleClearAllDocuments}

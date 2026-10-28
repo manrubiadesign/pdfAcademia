@@ -13,6 +13,8 @@ export interface UploadedPDF {
   totalChars: number;
   isScanned: boolean; // true if very little or no selectable text detected
   uploadDate: number;
+  fileUri?: string; // Gemini Cloud Storage URI for fast multimodal processing
+  isCloudHosted?: boolean;
 }
 
 export interface Citation {

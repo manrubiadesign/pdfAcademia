@@ -4,11 +4,11 @@ import { ExamConfig, ExamQuestion } from '@/types';
 
 export async function POST(req: NextRequest) {
   try {
-    const { context, config, apiKey, model }: { context: string; config: ExamConfig; apiKey?: string; model?: string } = await req.json();
+    const { context, files, config, apiKey, model }: { context: string; files?: { fileUri: string; mimeType?: string }[]; config: ExamConfig; apiKey?: string; model?: string } = await req.json();
 
-    if (!context || !config) {
+    if ((!context && (!files || files.length === 0)) || !config) {
       return NextResponse.json(
-        { error: 'Contexto o configuración no proporcionados' },
+        { error: 'Contexto, documentos o configuración no proporcionados' },
         { status: 400 }
       );
     }
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     }[config.type] || 'Preguntas tipo test con 4 opciones';
 
     const prompt = `
-Eres un profesor universitario experto elaborando un examen riguroso para tus alumnos, basado ÚNICAMENTE en el siguiente contenido extraído de documentos PDF.
+Eres un profesor universitario experto elaborando un examen riguroso para tus alumnos, basado ÚNICAMENTE en el siguiente contenido de los documentos PDF.
 
 DIRECTIVAS ESPECÍFICAS:
 1. Número exacto de preguntas: ${config.count} preguntas.
@@ -47,14 +47,26 @@ Devuelve EXCLUSIVAMENTE un arreglo JSON válido (sin texto antes ni después) co
   }
 ]
 
-CONTENIDO DE LOS DOCUMENTOS:
-=========================================
-${context}
-=========================================
+${context ? `TEXTO DE LOS DOCUMENTOS:\n=========================================\n${context}\n=========================================` : ''}
 `;
 
+    const userParts: any[] = [];
+    if (Array.isArray(files) && files.length > 0) {
+      for (const f of files) {
+        if (f.fileUri) {
+          userParts.push({
+            fileData: {
+              fileUri: f.fileUri,
+              mimeType: f.mimeType || 'application/pdf',
+            },
+          });
+        }
+      }
+    }
+    userParts.push({ text: prompt });
+
     const response = await generateContentWithFallback(ai, model || 'gemini-3.8-flash', {
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: [{ role: 'user', parts: userParts }],
       config: {
         responseMimeType: 'application/json',
       },

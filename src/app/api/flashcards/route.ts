@@ -4,11 +4,11 @@ import { Flashcard } from '@/types';
 
 export async function POST(req: NextRequest) {
   try {
-    const { context, count = 12, topic, apiKey, model } = await req.json();
+    const { context, files, count = 12, topic, apiKey, model } = await req.json();
 
-    if (!context) {
+    if (!context && (!files || files.length === 0)) {
       return NextResponse.json(
-        { error: 'Contexto no proporcionado' },
+        { error: 'Contexto o documentos no proporcionados' },
         { status: 400 }
       );
     }
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     const prompt = `
 Eres un pedagogo experto en técnicas de estudio activo y repetición espaciada.
 
-TAREA: Genera exactamente ${targetCount} tarjetas de estudio (flashcards) con los conceptos más importantes y fundamentales extraídos del texto de los documentos.
+TAREA: Genera exactamente ${targetCount} tarjetas de estudio (flashcards) con los conceptos más importantes y fundamentales extraídos del contenido de los documentos.
 ${topic ? `Enfócate prioritariamente en el tema: "${topic}".` : ''}
 
 REGLAS PARA CADA FLASHCARD:
@@ -38,14 +38,26 @@ Devuelve EXCLUSIVAMENTE un arreglo JSON válido:
   }
 ]
 
-CONTENIDO DE LOS DOCUMENTOS:
-=========================================
-${context}
-=========================================
+${context ? `TEXTO DE LOS DOCUMENTOS:\n=========================================\n${context}\n=========================================` : ''}
 `;
 
+    const userParts: any[] = [];
+    if (Array.isArray(files) && files.length > 0) {
+      for (const f of files) {
+        if (f.fileUri) {
+          userParts.push({
+            fileData: {
+              fileUri: f.fileUri,
+              mimeType: f.mimeType || 'application/pdf',
+            },
+          });
+        }
+      }
+    }
+    userParts.push({ text: prompt });
+
     const response = await generateContentWithFallback(ai, model || 'gemini-3.8-flash', {
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: [{ role: 'user', parts: userParts }],
       config: {
         responseMimeType: 'application/json',
       },
