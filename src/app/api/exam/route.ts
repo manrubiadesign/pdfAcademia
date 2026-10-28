@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGeminiModel } from '@/lib/gemini';
+import { getGeminiClient, normalizeModelName } from '@/lib/gemini';
 import { ExamConfig, ExamQuestion } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const gemini = getGeminiModel(apiKey, model);
+    const ai = getGeminiClient(apiKey);
+    const activeModel = normalizeModelName(model);
 
     const questionTypeDescription = {
       test: 'Preguntas de opción múltiple (tipo test) con exactamente 4 opciones ("A) ...", "B) ...", "C) ...", "D) ...") y una única opción correcta.',
@@ -53,17 +54,15 @@ ${context}
 =========================================
 `;
 
-    const result = await gemini.generateContent({
+    const response = await ai.models.generateContent({
+      model: activeModel,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
+      config: {
         responseMimeType: 'application/json',
       },
     });
 
-    const response = await result.response;
-    const rawText = response.text().trim();
-    
-    // Parse JSON safely
+    const rawText = response.text?.trim() || '[]';
     const questions: ExamQuestion[] = JSON.parse(rawText);
 
     return NextResponse.json({ questions });

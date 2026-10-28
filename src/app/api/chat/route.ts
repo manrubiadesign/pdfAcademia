@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGeminiModel } from '@/lib/gemini';
+import { getGeminiClient, normalizeModelName } from '@/lib/gemini';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +12,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const gemini = getGeminiModel(apiKey, model);
+    const ai = getGeminiClient(apiKey);
+    const activeModel = normalizeModelName(model);
 
     const systemInstruction = `
 Eres un tutor académico riguroso y asistente de estudio basado EXCLUSIVAMENTE en el contenido de los documentos PDF subidos por el alumno.
@@ -29,7 +30,7 @@ ${context}
 =========================================
 `;
 
-    // Format conversation history for Gemini
+    // Format conversation history for GoogleGenAI
     const contents: any[] = [];
     
     // Add history
@@ -41,20 +42,22 @@ ${context}
       });
     }
 
-    // Add current user prompt with system instruction in prefix
+    // Add current user prompt
     const lastUserMessage = messages[messages.length - 1].content;
     contents.push({
       role: 'user',
-      parts: [{ text: `${systemInstruction}\n\nPregunta del alumno: ${lastUserMessage}` }],
+      parts: [{ text: lastUserMessage }],
     });
 
-    const result = await gemini.generateContent({
+    const response = await ai.models.generateContent({
+      model: activeModel,
       contents,
+      config: {
+        systemInstruction,
+      },
     });
 
-    const response = await result.response;
-    const text = response.text();
-
+    const text = response.text || '';
     return NextResponse.json({ text });
   } catch (error: any) {
     console.error('Error en /api/chat:', error);

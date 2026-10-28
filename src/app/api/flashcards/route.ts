@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGeminiModel } from '@/lib/gemini';
+import { getGeminiClient, normalizeModelName } from '@/lib/gemini';
 import { Flashcard } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
     }
 
     const targetCount = [8, 12, 20].includes(Number(count)) ? Number(count) : 12;
-    const gemini = getGeminiModel(apiKey, model);
+    const ai = getGeminiClient(apiKey);
+    const activeModel = normalizeModelName(model);
 
     const prompt = `
 Eres un pedagogo experto en técnicas de estudio activo y repetición espaciada.
@@ -44,15 +45,15 @@ ${context}
 =========================================
 `;
 
-    const result = await gemini.generateContent({
+    const response = await ai.models.generateContent({
+      model: activeModel,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
+      config: {
         responseMimeType: 'application/json',
       },
     });
 
-    const response = await result.response;
-    const raw = response.text().trim();
+    const raw = response.text?.trim() || '[]';
     const flashcards: Flashcard[] = JSON.parse(raw);
 
     return NextResponse.json({ flashcards });

@@ -108,9 +108,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onChange={(e) => setModel(e.target.value)}
                 className="w-full px-3.5 py-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 text-slate-800"
               >
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recomendado - Ultra rápido)</option>
-                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Estable)</option>
-                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recomendado - Rápido y Estable)</option>
+                <option value="gemini-3.5-flash">Gemini 3.5 Flash (Alta Inteligencia)</option>
+                <option value="gemini-3.8-flash">Gemini 3.8 Flash (Rendimiento Avanzado)</option>
+                <option value="gemini-3.1-pro">Gemini 3.1 Pro (Razonamiento Complejo)</option>
               </select>
             </div>
           </div>

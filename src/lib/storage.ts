@@ -197,7 +197,18 @@ export function getAppSettings(): AppSettings {
   }
   try {
     const raw = localStorage.getItem('estudio_pdf_settings');
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Migrar automáticamente si tenía configurado un modelo desactualizado
+      if (
+        !parsed.model ||
+        parsed.model.includes('1.5') ||
+        parsed.model.includes('2.0')
+      ) {
+        parsed.model = 'gemini-2.5-flash';
+      }
+      return parsed;
+    }
   } catch {}
   return { geminiApiKey: '', model: 'gemini-2.5-flash' };
 }

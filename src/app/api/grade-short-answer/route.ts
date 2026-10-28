@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGeminiModel } from '@/lib/gemini';
+import { getGeminiClient, normalizeModelName } from '@/lib/gemini';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +12,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const gemini = getGeminiModel(apiKey, model);
+    const ai = getGeminiClient(apiKey);
+    const activeModel = normalizeModelName(model);
 
     const prompt = `
 Eres un evaluador académico imparcial y formativo.
@@ -36,15 +37,16 @@ Devuelve EXCLUSIVAMENTE un JSON válido con esta forma:
 }
 `;
 
-    const result = await gemini.generateContent({
+    const response = await ai.models.generateContent({
+      model: activeModel,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
+      config: {
         responseMimeType: 'application/json',
       },
     });
 
-    const response = await result.response;
-    const evaluation = JSON.parse(response.text().trim());
+    const rawText = response.text?.trim() || '{}';
+    const evaluation = JSON.parse(rawText);
 
     return NextResponse.json(evaluation);
   } catch (error: any) {
